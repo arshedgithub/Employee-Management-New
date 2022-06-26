@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta http-equiv="X-UA-Compatible" content="IE=edge" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Employee Form</title>
+    <link
+      href="https://cdn.jsdelivr.net/npm/bootstrap@5.2.0-beta1/dist/css/bootstrap.min.css"
+      rel="stylesheet"
+      integrity="sha384-0evHe/X+R7YkIZDRvuzKMRqM+OrBnVFBL6DOitfPri4tjfHxaWutUpFmBp4vmVor"
+      crossorigin="anonymous"
+    />
+    <script
+      src="https://cdn.jsdelivr.net/npm/bootstrap@5.2.0-beta1/dist/js/bootstrap.bundle.min.js"
+      integrity="sha384-pprn3073KE6tl6bjs2QrFaJGz5/SUsLqktiwsUTF55Jfv3qYSDhgCecCxMW52nD2"
+      crossorigin="anonymous"
+    ></script>
+  </head>
+  <script>
+    window.addEventListener("load", initialize);
+
+    var ajax;
+    var genders;
+    var employees;
+    var array;
+    var employeeStatus;
+
+    function Employee(name, age, gender) {
+      this.name = name;
+      this.age = age;
+      this.gender = gender;
+    }
+
+    function initialize() {
+      btnClear.addEventListener("click", clearForm);
+      btnSearch.addEventListener("click", search);
+      btnSearchClear.addEventListener("click", clearSearch);
+      btnAdd.addEventListener("click", btnAddMC);
+
+      employees = get("./employeeController.php");
+      genders = get("./gendercontroller.php");
+      loadView();
+      loadForm();
+    }
+
+    function loadView() {
+      fillEmployeeTable();
+      fillCombo(cmbSearchGender, genders, "Select a Gender");
+    }
+
+    function fillEmployeeTable() {
+      var modifyFunc = function (row) {
+        var userConfirm = window.confirm("Are you sure to modify ");
+        if (userConfirm) fillForm(row);
+      };
+
+      fillTable(
+        display,
+        employees,
+        [
+          "name",
+          "age",
+          function (e) {
+            return e.gender.name;
+          },
+        ],
+        [
+          { btnText: "Modify", func: modifyFunc, btnColor: "btn-primary" },
+          { btnText: "Delete", func: modifyFunc, btnColor: "btn-danger" },
+        ]
+      );
+    }
+
+    function loadForm() {
+      fillCombo(cmbGender, genders, "Select a Gender");
+    }
+
+    function get(url) {
+      var http = new XMLHttpRequest();
+
+      // asynchronus way
+
+      // http.onreadystatechange = function () {
+      //   if (this.readyState == 4 && this.status == 200) {
+      //     var data = JSON.parse(this.responseText);
+      //     fillCombo()
+      //   }
+      // };
+
+      // synchronous way
+      http.open("GET", url, false);
+      http.send();
+      var data = JSON.parse(http.responseText);
+      return data;
+    }
+
+    function add(url, data) {
+      var http = new XMLHttpRequest();
+
+      http.open("POST", url, false);
+      http.setRequestHeader(
+        "Content-Type",
+        "application/x-www-form-urlencoded"
+      );
+      http.send(data);
+    }
+
+    function fillTable(show, data, props, buttons) {
+      show.innerHTML = "";
+      for (let i = 0; i < data.length; i++) {
+        const datum = data[i];
+        // display.innerHTML += `<tr><td>${employee['name']}</td><td>${employee['age']}</td><td>${employee['gender']["name"]}</td></tr>`;
+
+        var tr = document.createElement("tr");
+        tr.setAttribute("id", i);
+        for (let j = 0; j < props.length; j++) {
+          if (typeof props[j] == "function") {
+            var text = document.createTextNode(props[j](datum));
+          } else {
+            var text = document.createTextNode(datum[[props[j]]]);
+          }
+
+          var td = document.createElement("td");
+          td.appendChild(text);
+          tr.appendChild(td);
+        }
+
+        if (buttons.length != 0) {
+          for (let k = 0; k < buttons.length; k++) {
+            const button = buttons[k];
+
+            var tdModify = document.createElement("td");
+            var btnModify = document.createElement("button");
+
+            btnModify.type = "button";
+            btnModify.innerHTML = button.btnText;
+            btnModify.classList.add("btn", button.btnColor);
+            btnModify.addEventListener("click", function () {
+              button.func(this.parentNode.parentNode);
+            });
+            tdModify.appendChild(btnModify);
+            tr.appendChild(tdModify);
+          }
+        }
+        show.appendChild(tr);
+      }
+    }
+
+    function clearTableSelection(show) {
+      var rows = show.children;
+      for (let i = 0; i < rows.length; i++) {
+        rows[i].style.backgroundColor = "Initial";
+      }
+    }
+
+    function fillCombo(combo, data, hint) {
+      var optionHint = document.createElement("option");
+      optionHint.value = null;
+      optionHint.innerHTML = hint;
+      optionHint.setAttribute("disabled", "disabled");
+      optionHint.setAttribute("selected", "selected");
+      combo.appendChild(optionHint);
+
+      for (let i = 0; i < data.length; i++) {
+        const datum = data[i];
+        var option = document.createElement("option");
+        option.value = JSON.stringify(datum);
+        option.innerHTML = datum["name"];
+        combo.appendChild(option);
+      }
+    }
+
+    function fillForm(row) {
+      clearTableSelection(display);
+      btnAdd.setAttribute("diabled", "disabled");
+      btnUpdate.removeAttribute("diabled");
+      btnDelete.removeAttribute("diabled");
+      row.style.backgroundColor = "lightBlue";
+
+      var oldEmployee = employees[row.getAttribute("id")];
+      employee = JSON.parse(JSON.stringify(oldEmployee));
+      txtName.value = employee.name;
+      txtAge.value = employee.age;
+      cmbGender.value = JSON.stringify(employee.gender);
+      employeeStatus = employee;
+      // cmbGender[datum.gender.id].setAttribute("selected", "selected");
+    }
+
+    function mapping() {
+      const { name, age, gender } = employeeStatus;
+      txtName.style.backgroundColor =
+        txtName.value != name ? "yellow" : "lightGreen";
+      txtAge.style.backgroundColor =
+        txtAge.value != age ? "yellow" : "lightGreen";
+      cmbGender.style.backgroundColor =
+        cmbGender.value != JSON.stringify(gender) ? "yellow" : "lightGreen";
+      console.log(employeeStatus);
+    }
+
+    function clearForm() {
+      txtName.value = "";
+      txtAge.value = "";
+      cmbGender.value = null;
+
+      txtName.style.backgroundColor = "transparent";
+      txtAge.style.backgroundColor = "transparent";
+      cmbGender.style.backgroundColor = "transparent";
+
+      btnUpdate.setAttribute("diabled", "disabled");
+      btnDelete.setAttribute("diabled", "disabled");
+      btnAdd.removeAttribute("diabled");
+    }
+
+    function search() {
+      var qry;
+      var tname = txtSearchName.value;
+      var tgen =
+        cmbSearchGender.value != null ? JSON.parse(cmbSearchGender.value) : "";
+      tname && !tgen ? (qry = "name=" + tname) : "";
+      !tname && tgen ? (qry = "gender=" + tgen["id"]) : "";
+      tname && tgen ? (qry = "name=" + tname + "&gender=" + tgen["id"]) : "";
+
+      employees = get("./employeeController.php?" + qry);
+      fillEmployeeTable();
+    }
+
+    function clearSearch() {
+      txtSearchName.value = "";
+      cmbSearchGender.value = null;
+    }
+
+    function btnAddMC() {
+      var name = txtName.value;
+      var age = txtAge.value;
+      var gender = cmbGender.value != "null" ? JSON.parse(cmbGender.value) : "";
+
+      var nameRegex = new RegExp("^[a-zA-Z]{3,}$");
+      var ageRegex = new RegExp("^[1-1][8-9]|[2-4][0-9]$");
+
+      var formError = false;
+
+      if (!name || !nameRegex.test(name)) {
+        txtName.style.backgroundColor = "pink";
+        formError = true;
+      } else {
+        txtName.style.backgroundColor = "lightGreen";
+      }
+
+      if (!age || !ageRegex.test(age)) {
+        txtAge.style.backgroundColor = "pink";
+        formError = true;
+      } else {
+        txtAge.style.backgroundColor = "lightGreen";
+      }
+
+      if (!gender) {
+        cmbGender.style.backgroundColor = "pink";
+        formError = true;
+      } else {
+        cmbGender.style.backgroundColor = "lightGreen";
+      }
+
+      // txtName.style.backgroundColor =
+      // !name || !nameRegex.test(name) ? "pink" : "lightGreen";
+      // txtAge.style.backgroundColor =
+      //   !age || !ageRegex.test(age) ? "pink" : "lightGreen";
+      // cmbGender.style.backgroundColor = !gender ? "pink" : "lightGreen";
+
+      if (!formError) {
+        var userConfirm = window.confirm(
+          "Are you sure to you want to Add this Employee ? \nName : " +
+            name +
+            "\nAge : " +
+            age +
+            "\nGender : " +
+            gender["name"]
+        );
+        if (userConfirm) {
+          var employee = new Employee();
+
+          employee.name = name;
+          employee.age = age;
+          employee.gender = gender;
+          data = "employee=" + JSON.stringify(employee);
+          add("./employeeController.php", data);
+          fillEmployeeTable();
+          clearForm();
+        }
+      }
+    }
+  </script>
+  <body>
+    <h1 class="text-center my-5">Employee Detail Manager</h1>
+
+    <div class="container">
+      <div class="row">
+        <div class="col m-3">
+          <div class="card p-4 bg-light">
+            <h3 class="text-center">Search</h3>
+            <br />
+            <div>
+              Name :
+              <input type="text" id="txtSearchName" size="20" /><br /><br />
+              Gender :
+              <select id="cmbSearchGender"></select
+              ><br /><br />
+              <button class="btn btn-primary" id="btnSearch">Search</button>
+              <button class="btn btn-danger" id="btnSearchClear">
+                Clear Search
+              </button>
+            </div>
+          </div>
+
+          <div class="card my-5 p-4 bg-light">
+            <h3 class="text-center">Form</h3>
+            <br />
+            <div>
+              Name :
+              <input type="text" id="txtName" size="20" onkeyup="mapping()" />
+              <div class="text-danger" id="nameErr"></div>
+              <br /><br />
+              Age:
+              <input type="text" id="txtAge" size="20" onkeyup="mapping()" />
+              <div class="text-danger" id="ageErr"></div>
+              <br /><br />
+              Gender :
+              <select id="cmbGender" onchange="mapping()"></select>
+              <div class="text-danger" id="genderErr"></div>
+              <br /><br />
+              <button class="btn btn-primary" id="btnAdd">Add</button>
+              <button class="btn btn-primary" id="btnUpdate" hidden>
+                Update
+              </button>
+              <button class="btn btn-warning" id="btnClear">Clear</button>
+              <button class="btn btn-danger" id="btnDelete" hidden>
+                Delete
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div class="col">
+          <div class="card my-3 p-3">
+            <h4 class="text-center mb-2">Employees</h4>
+            <!-- <table cellspacing="1" cellpadding="5" id="tblMain" border="1"> -->
+            <table class="table table-striped">
+              <thead>
+                <tr>
+                  <th>Name</th>
+                  <th>Age</th>
+                  <th>Gender</th>
+                  <th></th>
+                </tr>
+              </thead>
+              <tbody id="display"></tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Button trigger modal -->
+    <button
+      type="button"
+      class="btn btn-primary"
+      data-bs-toggle="modal"
+      data-bs-target="#modifyModal"
+    >
+      Launch demo modal
+    </button>
+
+    <!-- Modal -->
+    <div
+      class="modal fade"
+      id="modifyModal"
+      tabindex="-1"
+      aria-labelledby="exampleModalLabel"
+      aria-hidden="true"
+    >
+      <div class="modal-dialog">
+        <div class="modal-content">
+          <div class="modal-header">
+            <h5 class="modal-title" id="exampleModalLabel">Modal title</h5>
+            <button
+              type="button"
+              class="btn-close"
+              data-bs-dismiss="modal"
+              aria-label="Close"
+            ></button>
+          </div>
+          <div class="modal-body">...</div>
+          <div class="modal-footer">
+            <button
+              type="button"
+              class="btn btn-secondary"
+              data-bs-dismiss="modal"
+            >
+              Close
+            </button>
+            <button type="button" class="btn btn-primary">Save changes</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </body>
+</html>
